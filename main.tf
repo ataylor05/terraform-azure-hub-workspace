@@ -3,6 +3,7 @@ locals {
   environment_tag = "Dev"
 }
 
+
 module "network_hub" {
   source                  = "github.com/teokyllc/terraform-azure-network-hub"
   environment_tag         = local.environment_tag
