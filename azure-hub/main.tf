@@ -3,28 +3,33 @@ locals {
   environment_tag = "Dev"
 }
 
+resource "azurerm_resource_group" "main" {
+  name     = var.resource_group_name
+  location = local.region
+}
 
-module "network_hub" {
-  source                  = "github.com/teokyllc/terraform-azure-network-hub"
-  environment_tag         = local.environment_tag
-  region                  = local.region
-  vnet_cidr               = "10.0.0.0/16"
-  default_subnet          = "10.0.0.0/24"
-  gateway_subnet          = "10.0.255.0/24"
-  dns_servers             = ["192.168.3.2"]
-  ptp_vpn_remote_gw_name  = "home"
-  ptp_vpn_remote_endpoint = "gate.teokyllc.org"
-  ptp_vpn_psk             = var.ptp_vpn_psk
+resource "azurerm_virtual_network" "main" {
+  name                = "terratest-network"
+  address_space       = ["10.0.0.0/16"]
+  location            = local.region
+  resource_group_name = azurerm_resource_group.main.name
+}
+
+resource "azurerm_subnet" "internal" {
+  name                 = "internal"
+  resource_group_name  = azurerm_resource_group.main.name
+  virtual_network_name = azurerm_virtual_network.main.name
+  address_prefix       = "10.0.17.0/24"
 }
 
 resource "azurerm_network_interface" "main" {
-  name                = "test-vm-nic"
+  name                = "terratest-nic"
   location            = local.region
-  resource_group_name = module.network_hub.network_rg_name
+  resource_group_name = azurerm_resource_group.main.name
 
   ip_configuration {
     name                          = "terratestconfiguration1"
-    subnet_id                     = module.network_hub.default_subnet_id
+    subnet_id                     = azurerm_subnet.internal.id
     private_ip_address_allocation = "Dynamic"
   }
 }
@@ -32,8 +37,8 @@ resource "azurerm_network_interface" "main" {
 resource "azurerm_virtual_machine" "main" {
   name                              = "test-vm"
   location                          = local.region
-  resource_group_name               = module.network_hub.network_rg_name
-  network_interface_ids             = ["${azurerm_network_interface.main.id}"]
+  resource_group_name               = azurerm_resource_group.main.name
+  network_interface_ids             = [azurerm_network_interface.main.id]
   vm_size                           = "Standard_B1s"
   delete_os_disk_on_termination     = true
   delete_data_disks_on_termination  = true
