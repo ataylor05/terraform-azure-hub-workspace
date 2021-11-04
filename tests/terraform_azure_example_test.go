@@ -33,3 +33,4 @@ func TestTerraformAzureExample(t *testing.T) {
 
 	// Test that the Virtual Machine size matches the Terraform specification
 	assert.Equal(t, expectedVMSize, actualVMSize)
+}
